@@ -12,6 +12,7 @@ from selenium.webdriver.common.proxy import Proxy, ProxyType
 class HidemynaCollector(AbstractWebSiteCollector):
     def __init__(self) -> None:
         super().__init__()
+        self.interval = 60
 
     def update(self, browser, page_limit=1):
         page_counter = 1
@@ -30,7 +31,7 @@ class HidemynaCollector(AbstractWebSiteCollector):
                 next_page = None
 
             if next_page:
-                print("Next page...")
+                # print("Next page...")
                 next_page = next_page.find_element_by_tag_name("a")
                 next_page.click()
                 self._wait_for_proxy_list(browser)

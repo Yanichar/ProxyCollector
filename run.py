@@ -9,22 +9,22 @@ from selenium.webdriver.common.proxy import Proxy, ProxyType
 from hidemynaCollector import HidemynaCollector
 from dataBaseMaster import DataBaseMaster
 
+db = DataBaseMaster()
+
+
+def handle_new_proxy(proxy_list):
+    print(f"Got {len(proxy_list)} proxy servers and {db.add_proxys(proxy_list)} of them is new")
+
+
+def handle_collector_is_broken(msg):
+    print(msg)
+
+
 def main():
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-
-    # get chromedriver from
-    # https://sites.google.com/a/chromium.org/chromedriver/downloads
-
-    with webdriver.Chrome(options=options) as browser:
-        test = HidemynaCollector()
-
-        while True:
-            test.update(browser, page_limit=1)
-            db = DataBaseMaster()
-            print(f"Collected {len(test.proxy_list)} and {db.add_proxys(test.proxy_list)} were new")
-            time.sleep(10)
+    test = HidemynaCollector()
+    test.new_proxy_collected_cb = handle_new_proxy
+    test.collector_is_broken_cb = handle_collector_is_broken
+    test.start()
 
 
 if __name__ == '__main__':
