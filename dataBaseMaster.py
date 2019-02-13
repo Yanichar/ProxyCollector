@@ -75,6 +75,9 @@ class DataBaseMaster(object):
         c.execute('SELECT * FROM proxy_list WHERE status IS NULL ORDER BY timestamp LIMIT 1')
         proxy = c.fetchone()
 
+        if proxy is None:
+            return None
+
         t = (proxy["id"], )
         c.execute('UPDATE proxy_list SET status="locked" WHERE id=?', t)
 
