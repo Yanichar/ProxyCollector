@@ -1,13 +1,10 @@
 import sqlite3
-import threading
 
 
 class DataBaseMaster(object):
     def __init__(self) -> None:
         super().__init__()
-        self.mutex = threading.Lock()
 
-        self.mutex.acquire()
         conn = sqlite3.connect('proxy.db')
 
         # make sure that table is exist
@@ -21,6 +18,8 @@ class DataBaseMaster(object):
                              location TEXT,
                              type TEXT NOT NULL,
                              online INTEGER DEFAULT NULL,
+                             latency FLOAT,
+                             status TEXT DEFAULT NULL,
                              last_seen DATETIME DEFAULT NULL,
                              timestamp DATETIME DEFAULT CURRENT_TIMESTAMP       
                          )
@@ -31,7 +30,6 @@ class DataBaseMaster(object):
 
         conn.commit()
         conn.close()
-        self.mutex.release()
 
     def check_proxy(self, proxy, conn):
         c = conn.cursor()
@@ -46,7 +44,6 @@ class DataBaseMaster(object):
         return result
 
     def add_proxys(self, proxy_list):
-        self.mutex.acquire()
 
         conn = sqlite3.connect('proxy.db')
         added_proxy_counter = 0
@@ -61,9 +58,41 @@ class DataBaseMaster(object):
 
         conn.commit()
         conn.close()
-        self.mutex.release()
 
         return added_proxy_counter
 
+    def _dict_factory(self, cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
 
+    def get_proxy_to_check(self):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+        c.row_factory = self._dict_factory
 
+        c.execute('SELECT * FROM proxy_list WHERE status IS NULL ORDER BY timestamp LIMIT 1')
+        proxy = c.fetchone()
+
+        t = (proxy["id"], )
+        c.execute('UPDATE proxy_list SET status="locked" WHERE id=?', t)
+
+        conn.commit()
+        conn.close()
+        return proxy
+
+    def update_online_status(self, proxy_id, online, latency):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+
+        t = (online, latency, proxy_id)
+        c.execute('UPDATE proxy_list SET '
+                  'online=?,'
+                  ' status=null,'
+                  ' timestamp=CURRENT_TIMESTAMP,'
+                  ' latency=?'
+                  ' WHERE id=?', t)
+
+        conn.commit()
+        conn.close()
