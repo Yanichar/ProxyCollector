@@ -72,7 +72,9 @@ class DataBaseMaster(object):
         c = conn.cursor()
         c.row_factory = self._dict_factory
 
-        c.execute('SELECT * FROM proxy_list WHERE status IS NULL ORDER BY timestamp LIMIT 1')
+        # nor checked proxy have priority
+        c.execute('SELECT * FROM proxy_list WHERE status <> "locked" '
+                  'ORDER BY status, timestamp LIMIT 1')
         proxy = c.fetchone()
 
         if proxy is None:
@@ -92,7 +94,7 @@ class DataBaseMaster(object):
         t = (online, latency, proxy_id)
         c.execute('UPDATE proxy_list SET '
                   'online=?,'
-                  ' status=null,'
+                  ' status="checked",'
                   ' timestamp=CURRENT_TIMESTAMP,'
                   ' latency=?'
                   ' WHERE id=?', t)
