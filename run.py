@@ -1,12 +1,3 @@
-import time
-
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium import webdriver
-from os import listdir
-from selenium.webdriver.common.proxy import Proxy, ProxyType
-from hidemynaCollector import HidemynaCollector
 from dataBaseMaster import DataBaseMaster
 from proxyChecker import ProxyChecker
 
