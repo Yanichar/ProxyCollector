@@ -1,6 +1,6 @@
 from dataBaseMaster import DataBaseMaster
 from proxyChecker import ProxyChecker
-
+from hidemynaCollector import HidemynaCollector
 db = DataBaseMaster()
 
 
@@ -21,12 +21,10 @@ def main():
         test.check_proxy_result_cb = db.update_online_status
         test.start()
 
-    """
     test = HidemynaCollector()
     test.new_proxy_collected_cb = handle_new_proxy
     test.collector_is_broken_cb = handle_collector_is_broken
     test.start()
-    """
 
 
 if __name__ == '__main__':
