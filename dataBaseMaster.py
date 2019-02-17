@@ -73,7 +73,7 @@ class DataBaseMaster(object):
         c.row_factory = self._dict_factory
 
         # nor checked proxy have priority
-        c.execute('SELECT * FROM proxy_list WHERE status <> "locked" '
+        c.execute('SELECT * FROM proxy_list WHERE status IS NOT "locked" '
                   'ORDER BY status, timestamp LIMIT 1')
         proxy = c.fetchone()
 
