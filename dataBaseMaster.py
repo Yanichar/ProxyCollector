@@ -19,7 +19,6 @@ class DataBaseMaster(object):
                              type TEXT NOT NULL,
                              online INTEGER DEFAULT NULL,
                              latency FLOAT,
-                             status TEXT DEFAULT NULL,
                              last_seen DATETIME DEFAULT NULL,
                              timestamp DATETIME DEFAULT CURRENT_TIMESTAMP       
                          )
@@ -67,25 +66,63 @@ class DataBaseMaster(object):
             d[col[0]] = row[idx]
         return d
 
-    def get_proxy_to_check(self):
+    def get_unchecked_proxy(self, count=10000):
         conn = sqlite3.connect('proxy.db')
         c = conn.cursor()
         c.row_factory = self._dict_factory
+        t = (count,)
+        c.execute('SELECT * FROM proxy_list WHERE online IS NULL LIMIT ?', t)
+        proxy = c.fetchall()
+        conn.close()
+        return proxy
 
-        # nor checked proxy have priority
-        c.execute('SELECT * FROM proxy_list WHERE status IS NOT "locked" '
-                  'ORDER BY status, timestamp LIMIT 1')
-        proxy = c.fetchone()
+    def get_alive_proxy(self, count=100, min_age=3600):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+        c.row_factory = self._dict_factory
+        t = (f'-{min_age} seconds', count)
+        c.execute('SELECT * FROM proxy_list WHERE online="Online" '
+                  'AND timestamp <= datetime("now", ?) ORDER BY timestamp '
+                  'LIMIT ?', t)
+        proxy = c.fetchall()
+        conn.close()
+        return proxy
 
-        if proxy is None:
-            return None
+    def get_dead_proxy(self, count=100, min_age=3600):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+        c.row_factory = self._dict_factory
+        t = (f'-{min_age} seconds', count)
+        c.execute('SELECT * FROM proxy_list WHERE online="Offline" '
+                  'AND timestamp <= date("now", ?) ORDER BY timestamp '
+                  'LIMIT ?', t)
+        proxy = c.fetchall()
+        conn.close()
+        return proxy
 
-        t = (proxy["id"], )
-        c.execute('UPDATE proxy_list SET status="locked" WHERE id=?', t)
+    def update_db_by_results_list(self, results_list):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+
+        for result in results_list:
+            t = (result['online'], result['latency'], result['id'])
+
+            if result['online'] == 'Online':
+                c.execute('UPDATE proxy_list SET '
+                          ' online=?,'
+                          ' timestamp=CURRENT_TIMESTAMP,'
+                          ' last_seen=CURRENT_TIMESTAMP,'
+                          ' latency=?'
+                          ' WHERE id=?', t)
+            else:
+                c.execute('UPDATE proxy_list SET '
+                          ' online=?,'
+                          ' timestamp=CURRENT_TIMESTAMP,'
+                          ' latency=?'
+                          ' WHERE id=?', t)
 
         conn.commit()
         conn.close()
-        return proxy
 
     def update_online_status(self, proxy_id, online, latency):
         conn = sqlite3.connect('proxy.db')
@@ -94,7 +131,6 @@ class DataBaseMaster(object):
         t = (online, latency, proxy_id)
         c.execute('UPDATE proxy_list SET '
                   'online=?,'
-                  ' status="checked",'
                   ' timestamp=CURRENT_TIMESTAMP,'
                   ' latency=?'
                   ' WHERE id=?', t)
