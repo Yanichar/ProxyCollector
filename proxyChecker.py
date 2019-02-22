@@ -1,7 +1,10 @@
+import random
 import threading
 import time
 import requests
 from multiprocessing.dummy import Pool as ThreadPool
+
+SECONDS_PER_DAY = 60 * 60 * 24
 
 
 class ProxyChecker(threading.Thread):
@@ -18,19 +21,20 @@ class ProxyChecker(threading.Thread):
     def run(self):
         while True:
             # check all unchecked proxy
-            proxy_list = self.db.get_unchecked_proxy(1000)
-            proxy_list += self.db.get_alive_proxy(1000, 300)
-            proxy_list += self.db.get_dead_proxy(1000, 300)
+            proxy_list = self.db.get_unchecked_proxy(100)
+            # we use random number of proxy to check
+            proxy_list += self.db.get_alive_proxy(random.randint(5, 15), SECONDS_PER_DAY)
+            proxy_list += self.db.get_dead_proxy(random.randint(5, 15), SECONDS_PER_DAY)
 
             print(f"Prepare {len(proxy_list)} for check")
 
-            pool = ThreadPool(100)
+            pool = ThreadPool(3)
             results = pool.map(self._check_online, proxy_list)
             pool.close()
             pool.join()
             # print(results)
             self.db.update_db_by_results_list(results)
-            time.sleep(5)
+            time.sleep(1)
 
     @staticmethod
     def _check_online(proxy):
