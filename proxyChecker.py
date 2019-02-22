@@ -1,6 +1,7 @@
 import threading
 import time
 import requests
+from multiprocessing.dummy import Pool as ThreadPool
 
 
 class ProxyChecker(threading.Thread):
@@ -8,26 +9,31 @@ class ProxyChecker(threading.Thread):
     This module checks proxy for online and speed
     It uses request instead of selenium because of memory consumption
     """
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
         self.get_next_proxy_cb = None
         self.check_proxy_result_cb = None
+        self.db = db
 
     def run(self):
         while True:
-            if self.get_next_proxy_cb and self.check_proxy_result_cb:
-                proxy = self.get_next_proxy_cb()
+            # check all unchecked proxy
+            proxy_list = self.db.get_unchecked_proxy(1000)
+            proxy_list += self.db.get_alive_proxy(1000, 300)
+            proxy_list += self.db.get_dead_proxy(1000, 300)
 
-                if proxy is not None:
-                    online, latency = self._check_online(proxy)
-                    self.check_proxy_result_cb(proxy["id"], online, latency)
-                else:
-                    time.sleep(1)
-            else:
-                # just for case if no callback will be set before self.start() will be called
-                time.sleep(10)
+            print(f"Prepare {len(proxy_list)} for check")
 
-    def _check_online(self, proxy):
+            pool = ThreadPool(100)
+            results = pool.map(self._check_online, proxy_list)
+            pool.close()
+            pool.join()
+            # print(results)
+            self.db.update_db_by_results_list(results)
+            time.sleep(5)
+
+    @staticmethod
+    def _check_online(proxy):
         start_time = time.time()
         try:
             s = requests.Session()
@@ -48,11 +54,14 @@ class ProxyChecker(threading.Thread):
                            'https': f'{proxy["ip"]}:{proxy["port"]}'}
 
             # TODO: It is better to use http://... address for http proxy
-            s.get('https://2ip.ru/', proxies=proxies)
+            s.get('https://2ip.ru/', proxies=proxies, timeout=30)
             latency = time.time() - start_time
             print("Online:", proxy)
-            return "Online", latency
+
+            result = {'id': proxy['id'], 'online': "Online", 'latency': latency}
+            return result
         except:
             print("Offline:", proxy)
-            return "Offline", 0
+            result = {'id': proxy['id'], 'online': "Offline", 'latency': 0}
+            return result
 

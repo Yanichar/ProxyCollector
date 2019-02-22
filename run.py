@@ -13,18 +13,13 @@ def handle_collector_is_broken(msg):
 
 
 def main():
-    db.get_proxy_to_check()
-
-    for i in range(10):
-        test = ProxyChecker()
-        test.get_next_proxy_cb = db.get_proxy_to_check
-        test.check_proxy_result_cb = db.update_online_status
-        test.start()
-
     test = HidemynaCollector()
     test.new_proxy_collected_cb = handle_new_proxy
     test.collector_is_broken_cb = handle_collector_is_broken
     test.start()
+
+    proxy_check_manager = ProxyChecker(db)
+    proxy_check_manager.start()
 
 
 if __name__ == '__main__':
