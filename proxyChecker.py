@@ -39,8 +39,8 @@ class ProxyChecker(threading.Thread):
             proxy_list = self.db.get_unchecked_proxy(number_proxy_to_check)
 
             # we use random number of proxy to check
-            proxy_list += self.db.get_alive_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
-            proxy_list += self.db.get_dead_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
+            proxy_list += self.db.get_online_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
+            proxy_list += self.db.get_offline_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
 
             # TODO: some optimize her: we dont't need to collect more then 'number_proxy_to_check'
             proxy_list = proxy_list[:number_proxy_to_check]
