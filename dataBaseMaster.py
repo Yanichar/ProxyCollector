@@ -76,7 +76,7 @@ class DataBaseMaster(object):
         conn.close()
         return proxy
 
-    def get_online_proxy(self, count=100, min_age=3600):
+    def get_online_proxy(self, count=100):
         conn = sqlite3.connect('proxy.db')
         c = conn.cursor()
         c.row_factory = self._dict_factory
@@ -88,12 +88,13 @@ class DataBaseMaster(object):
         conn.close()
         return proxy
 
-    def get_offline_proxy(self, count=100, min_age=3600):
+    def get_offline_proxy(self, count=100):
         conn = sqlite3.connect('proxy.db')
         c = conn.cursor()
         c.row_factory = self._dict_factory
         t = (count,)
         c.execute('SELECT * FROM proxy_list WHERE online="Offline" '
+                  ' ORDER BY timestamp '
                   'LIMIT ?', t)
         proxy = c.fetchall()
         conn.close()
