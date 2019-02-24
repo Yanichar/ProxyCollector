@@ -7,9 +7,9 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 class HidemynaCollector(AbstractWebSiteCollector):
-    def __init__(self) -> None:
+    def __init__(self, update_interval=3600) -> None:
         super().__init__()
-        self.interval = 60
+        self.interval = update_interval
 
     def update(self, browser, page_limit=1):
         page_counter = 1

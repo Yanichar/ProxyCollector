@@ -12,28 +12,46 @@ class ProxyChecker(threading.Thread):
     This module checks proxy for online and speed
     It uses request instead of selenium because of memory consumption
     """
-    def __init__(self, db):
+    def __init__(self, db, min_online=10000, max_age=72000, max_threads=10):
         super().__init__()
         self.get_next_proxy_cb = None
         self.check_proxy_result_cb = None
         self.db = db
+        self.min_online = min_online
+        self.max_age = max_age
+        self.max_threads = max_threads
 
     def run(self):
         while True:
+            alive_proxy_count = self.db.get_alive_proxy_count(self.max_age)
+            number_proxy_to_check = 0
+
+            if alive_proxy_count < self.min_online:
+                # we use +20% to reduce number of check cycles
+                number_proxy_to_check = int((self.min_online - alive_proxy_count) * 1.2)
+
+            print(f"Alive proxy count:{alive_proxy_count}, we need to check {number_proxy_to_check} proxy")
+
+            if number_proxy_to_check > self.max_threads:
+                number_proxy_to_check = self.max_threads
+
             # check all unchecked proxy
-            proxy_list = self.db.get_unchecked_proxy(100)
+            proxy_list = self.db.get_unchecked_proxy(number_proxy_to_check)
+
             # we use random number of proxy to check
-            proxy_list += self.db.get_alive_proxy(random.randint(5, 15), SECONDS_PER_DAY)
-            proxy_list += self.db.get_dead_proxy(random.randint(5, 15), SECONDS_PER_DAY)
+            proxy_list += self.db.get_alive_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
+            proxy_list += self.db.get_dead_proxy(number_proxy_to_check, SECONDS_PER_DAY * 365)
 
-            print(f"Prepare {len(proxy_list)} for check")
+            # TODO: some optimize her: we dont't need to collect more then 'number_proxy_to_check'
+            proxy_list = proxy_list[:number_proxy_to_check]
 
-            pool = ThreadPool(3)
+            pool = ThreadPool(self.max_threads)
             results = pool.map(self._check_online, proxy_list)
             pool.close()
             pool.join()
-            # print(results)
+            # self._print_check_result(results)
             self.db.update_db_by_results_list(results)
+
             time.sleep(1)
 
     @staticmethod
@@ -60,12 +78,12 @@ class ProxyChecker(threading.Thread):
             # TODO: It is better to use http://... address for http proxy
             s.get('https://2ip.ru/', proxies=proxies, timeout=30)
             latency = time.time() - start_time
-            print("Online:", proxy)
+            # print("Online:", proxy)
 
             result = {'id': proxy['id'], 'online': "Online", 'latency': latency}
             return result
         except:
-            print("Offline:", proxy)
+            # print("Offline:", proxy)
             result = {'id': proxy['id'], 'online': "Offline", 'latency': 0}
             return result
 

@@ -94,11 +94,22 @@ class DataBaseMaster(object):
         c.row_factory = self._dict_factory
         t = (f'-{min_age} seconds', count)
         c.execute('SELECT * FROM proxy_list WHERE online="Offline" '
-                  'AND timestamp <= date("now", ?) ORDER BY timestamp '
+                  'AND timestamp <= datetime("now", ?) ORDER BY timestamp '
                   'LIMIT ?', t)
         proxy = c.fetchall()
         conn.close()
         return proxy
+
+    def get_alive_proxy_count(self, max_age):
+        conn = sqlite3.connect('proxy.db')
+        c = conn.cursor()
+        c.row_factory = self._dict_factory
+        t = (f'-{max_age} seconds',)
+        c.execute('SELECT * FROM proxy_list WHERE online="Online" '
+                  'AND last_seen >= datetime("now", ?) ORDER BY timestamp ', t)
+        proxy = c.fetchall()
+        conn.close()
+        return len(proxy)
 
     def update_db_by_results_list(self, results_list):
         conn = sqlite3.connect('proxy.db')
